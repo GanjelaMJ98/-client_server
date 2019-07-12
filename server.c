@@ -4,8 +4,10 @@
 #include <netinet/in.h>
 #include <unistd.h> 		//close()
 #include <errno.h>
+#include <stdio.h>
 
 int main(int argc, char const *argv[]){
+	int port = 3333;
 	int sock;
 	int listener;
 	char buf[1024];
@@ -20,28 +22,41 @@ int main(int argc, char const *argv[]){
 
 	serv_addr.sin_family = AF_INET;
 	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serv_addr.sin_port = htons(3333);
+	serv_addr.sin_port = htons(port);
 
 	if(bind(listener, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0){
 		perror("bind");
 		exit(2);
 	}
 
-	listen(listener,1);
+	listen(listener,2);
 
+	printf("Server started on port %d\n", port);
 	while(1){
 		sock = accept(listener, NULL, NULL);
 		if(sock < 0){
 			perror("accept");
 			exit(3);
 		}
-		while(1){
-			bytes_read = recv(sock, buf, 1024, 0);
-			if(bytes_read <= 0) break;
-			send(sock, buf, bytes_read, 0);
-		}
-		close(sock);
+		switch(fork()){
+			case -1:
+				perror("fork");
+				break;
+			case 0:
+				close(listener);
+				while(1){
+					bytes_read = recv(sock, buf, 1024, 0);
+					if(bytes_read <= 0) break;
+					printf("%s\n", buf);
+					send(sock, buf, bytes_read, 0);
+				}
+				close(sock);
+				_exit(0);
+			default:
+				close(sock);
+		}	
 	}
+	close(listener);
 
 	return 0;
 }

@@ -5,11 +5,39 @@
 #include <netinet/in.h>
 #include <unistd.h> 		//close()
 #include <errno.h>
+#include <string.h>
+#include <stdio.h>
 
 char message[] = "Hello\n";
 char buf[sizeof(message)];
 
+
+struct Client{
+	char name[50];
+	char address[50];
+	int port;  
+}Client;
+
+void printClient(struct Client client){
+	printf("%s %s:%d\n", client.name, client.address, client.port);
+}
+
+void registration(struct Client *client){
+	printf("Name: ");
+	scanf("%s", client->name);
+	printf("Address: ");
+	scanf("%s", client->address);
+	printf("Port: ");
+	scanf("%d", &client->port);
+
+}
+
 int main(){
+	struct Client client;
+	struct Client* pc = &client;
+	registration(pc);
+	printClient(client);
+	
 	int sock;
 	struct sockaddr_in addr;
 
@@ -26,9 +54,25 @@ int main(){
 		perror("connect");
 		exit(2);
 	}
-	printf("Sending...\n");
-	send(sock, message, sizeof(message), 0);
-	printf("Reception...\n");
+	char connection[50];
+	sprintf(connection, "%s connected from %s:%d\n", client.name, client.address, client.port);
+	printf("%s",connection);
+	char buf_con[sizeof(connection)];
+	send(sock, connection, sizeof(connection),0);
+	recv(sock, buf_con, sizeof(connection), 0);
+	printf("%s\n", buf_con);
+
+	while(1){
+		char message[50];
+		char input[30];
+		scanf("%s", input);
+		sprintf(message, "%s: %s", client.name, input);
+		send(sock, message, sizeof(message), 0);
+
+	}
+	//printf("Sending...\n");
+	//send(sock, message, sizeof(message), 0);
+	//printf("Reception...\n");
 	recv(sock, buf, sizeof(message), 0);
 
 	printf("%s\n", buf);
