@@ -6,6 +6,34 @@
 #include <errno.h>
 #include <stdio.h>
 
+int Connections[10];		
+int Counter = 0;
+
+void ClientHandler(int index, int* c){
+	char msg[256];
+	int bytes_read = 0;
+	while(1){
+		int Counter = *c;
+
+		bytes_read = recv(Connections[index], msg, sizeof(msg), 0);
+		if(bytes_read <= 0) continue;
+		printf("_____%d\n", Counter);
+		printf("%s\n", msg);
+		printf("_____\n");
+
+		/*	Дублирование всем, кроме отправителя
+		 	TODO: для первого клиента Counter = 1, для второго 2 и тд.
+				Необходимо чтобы при подключении 2х и более клиентов Counter во всех потоках
+				был равен количеству подключенных клиентов.	
+		*/
+		for(int i = 0; i < Counter; i++){
+			if(i == index) continue;
+			send(Connections[i], msg, sizeof(msg), 0);
+		}
+	}
+}
+
+
 int main(int argc, char const *argv[]){
 	int port = 3333;
 	int sock;
@@ -29,34 +57,37 @@ int main(int argc, char const *argv[]){
 		exit(2);
 	}
 
-	listen(listener,2);
+	listen(listener,SOMAXCONN);
 
-	printf("Server started on port %d\n", port);
-	while(1){
-		sock = accept(listener, NULL, NULL);
-		if(sock < 0){
+	printf("Server started on ort %d, sock: %d\n", port, listener);
+	
+
+	int Connection;
+	for(int i = 0; i < 10; i ++){
+
+		// Соединение с клиентом
+		Connection = accept(listener, NULL, NULL);
+		if(Connection < 0){
 			perror("accept");
 			exit(3);
-		}
-		switch(fork()){
-			case -1:
-				perror("fork");
-				break;
-			case 0:
-				close(listener);
-				while(1){
-					bytes_read = recv(sock, buf, 1024, 0);
-					if(bytes_read <= 0) break;
-					printf("%s\n", buf);
-					send(sock, buf, bytes_read, 0);
-				}
-				close(sock);
-				_exit(0);
-			default:
-				close(sock);
+		}else{
+			printf("Client Connected: %d\n", Connection);
+			char msg[50] = "Hello";
+			send(Connection, msg, sizeof(msg), 0);
+			Connections[i] = Connection;
+			Counter++;
+			
+			// Создание потока обработки сообщений
+			switch(fork()){
+				case -1:
+					perror("fork");
+					break;
+				case 0:
+					ClientHandler(i, &Counter);
+					_exit(0);
+			}
 		}	
 	}
 	close(listener);
-
 	return 0;
 }

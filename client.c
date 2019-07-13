@@ -25,19 +25,24 @@ void printClient(struct Client client){
 void registration(struct Client *client){
 	printf("Name: ");
 	scanf("%s", client->name);
-	printf("Address: ");
-	scanf("%s", client->address);
-	printf("Port: ");
-	scanf("%d", &client->port);
+	sprintf(client->address,"%s", "localhost");
+	client->port = 1000;
+	//printf("Address: ");
+	//scanf("%s", client->address);
+	//printf("Port: ");
+	//scanf("%d", &client->port);
 
 }
 
 int main(){
+	// Регистрация клиента
 	struct Client client;
 	struct Client* pc = &client;
 	registration(pc);
-	printClient(client);
+	//printClient(client);
 	
+
+	// Соединение с сервером
 	int sock;
 	struct sockaddr_in addr;
 
@@ -54,28 +59,40 @@ int main(){
 		perror("connect");
 		exit(2);
 	}
+
+	// Отправка серверу первого сообщения и печать ответа
 	char connection[50];
 	sprintf(connection, "%s connected from %s:%d\n", client.name, client.address, client.port);
 	printf("%s",connection);
+
 	char buf_con[sizeof(connection)];
 	send(sock, connection, sizeof(connection),0);
 	recv(sock, buf_con, sizeof(connection), 0);
 	printf("%s\n", buf_con);
 
+	// Поток, принимающий сообщения от сервера
+	char msg[256];
+	switch(fork()){
+		case -1:
+			perror("fork");
+			break;
+		case 0:
+			
+			while(1){
+				recv(sock, msg, sizeof(msg), 0);
+				printf("%s\n", msg);
+			}
+
+	}
+	// Отправка сообщений на сервер
 	while(1){
 		char message[50];
 		char input[30];
 		scanf("%s", input);
 		sprintf(message, "%s: %s", client.name, input);
 		send(sock, message, sizeof(message), 0);
-
 	}
-	//printf("Sending...\n");
-	//send(sock, message, sizeof(message), 0);
-	//printf("Reception...\n");
-	recv(sock, buf, sizeof(message), 0);
 
-	printf("%s\n", buf);
 	close(sock);
 
 	return 0;
