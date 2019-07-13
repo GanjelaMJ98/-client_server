@@ -5,21 +5,22 @@
 #include <unistd.h> 		//close()
 #include <errno.h>
 #include <stdio.h>
+#include <pthread.h>
 
-int Connections[10];		
+#define MAX_CLIENTS 10
+int Connections[MAX_CLIENTS];		
 int Counter = 0;
 
-void ClientHandler(int index, int* c){
+void* ClientHandler(void *arg){
+	int client = *((int*)arg);
 	char msg[256];
 	int bytes_read = 0;
 	while(1){
-		int Counter = *c;
-
-		bytes_read = recv(Connections[index], msg, sizeof(msg), 0);
+		bytes_read = recv(client, msg, sizeof(msg), 0);
 		if(bytes_read <= 0) continue;
-		printf("_____%d\n", Counter);
+		printf("--------\n");
 		printf("%s\n", msg);
-		printf("_____\n");
+		printf("--------\n");
 
 		/*	Дублирование всем, кроме отправителя
 		 	TODO: для первого клиента Counter = 1, для второго 2 и тд.
@@ -27,7 +28,7 @@ void ClientHandler(int index, int* c){
 				был равен количеству подключенных клиентов.	
 		*/
 		for(int i = 0; i < Counter; i++){
-			if(i == index) continue;
+			if(Connections[i] == client) continue;
 			send(Connections[i], msg, sizeof(msg), 0);
 		}
 	}
@@ -36,11 +37,12 @@ void ClientHandler(int index, int* c){
 
 int main(int argc, char const *argv[]){
 	int port = 3333;
-	int sock;
+	int sock, tmp;
 	int listener;
 	char buf[1024];
 	int bytes_read;
 	struct sockaddr_in serv_addr;
+	pthread_t threads[MAX_CLIENTS];
 
 	listener = socket(AF_INET, SOCK_STREAM, 0);
 	if(listener < 0) {
@@ -63,7 +65,7 @@ int main(int argc, char const *argv[]){
 	
 
 	int Connection;
-	for(int i = 0; i < 10; i ++){
+	for(int i = 0; i < MAX_CLIENTS; i++){
 
 		// Соединение с клиентом
 		Connection = accept(listener, NULL, NULL);
@@ -76,18 +78,23 @@ int main(int argc, char const *argv[]){
 			send(Connection, msg, sizeof(msg), 0);
 			Connections[i] = Connection;
 			Counter++;
-			
+
 			// Создание потока обработки сообщений
-			switch(fork()){
-				case -1:
-					perror("fork");
-					break;
-				case 0:
-					ClientHandler(i, &Counter);
-					_exit(0);
+			tmp = pthread_create(&threads[i], NULL, ClientHandler, &Connection);
+			if(tmp != 0){
+				perror("pthread_create");
+				exit(2);
 			}
 		}	
 	}
 	close(listener);
+	for(int j = 0; j < MAX_CLIENTS; j++){
+		tmp = pthread_join(threads[j], NULL);
+		if(tmp != 0){
+			perror("join");
+			exit(3);
+		}
+	}
+	
 	return 0;
 }

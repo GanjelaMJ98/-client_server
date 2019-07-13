@@ -62,7 +62,7 @@ int main(){
 
 	// Отправка серверу первого сообщения и печать ответа
 	char connection[50];
-	sprintf(connection, "%s connected from %s:%d\n", client.name, client.address, client.port);
+	sprintf(connection, "%s connected from %s:%d", client.name, client.address, client.port);
 	printf("%s",connection);
 
 	char buf_con[sizeof(connection)];
