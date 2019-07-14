@@ -21,12 +21,6 @@ void* ClientHandler(void *arg){
 		printf("--------\n");
 		printf("%s\n", msg);
 		printf("--------\n");
-
-		/*	Дублирование всем, кроме отправителя
-		 	TODO: для первого клиента Counter = 1, для второго 2 и тд.
-				Необходимо чтобы при подключении 2х и более клиентов Counter во всех потоках
-				был равен количеству подключенных клиентов.	
-		*/
 		for(int i = 0; i < Counter; i++){
 			if(Connections[i] == client) continue;
 			send(Connections[i], msg, sizeof(msg), 0);
@@ -60,13 +54,11 @@ int main(int argc, char const *argv[]){
 	}
 
 	listen(listener,SOMAXCONN);
-
 	printf("Server started on ort %d, sock: %d\n", port, listener);
 	
 
 	int Connection;
 	for(int i = 0; i < MAX_CLIENTS; i++){
-
 		// Соединение с клиентом
 		Connection = accept(listener, NULL, NULL);
 		if(Connection < 0){
@@ -74,7 +66,7 @@ int main(int argc, char const *argv[]){
 			exit(3);
 		}else{
 			printf("Client Connected: %d\n", Connection);
-			char msg[50] = "Hello";
+			char msg[50] = "Welcome to chat";
 			send(Connection, msg, sizeof(msg), 0);
 			Connections[i] = Connection;
 			Counter++;
